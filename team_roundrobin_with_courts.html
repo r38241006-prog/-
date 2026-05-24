@@ -1,0 +1,288 @@
+
+<h2 class="sr-only">総当たり対戦組み合わせ抽選アプリ</h2>
+<div style="padding: 1.5rem 0;">
+
+<div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem;">
+  <div>
+    <p style="font-size: 22px; font-weight: 500; color: var(--color-text-primary); margin: 0;">総当たり抽選</p>
+    <p style="font-size: 14px; color: var(--color-text-secondary); margin: 4px 0 0;">全チームが1回ずつ対戦・コート別に表示</p>
+  </div>
+  <i class="ti ti-tournament" aria-hidden="true" style="font-size: 32px; color: var(--color-text-secondary);"></i>
+</div>
+
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 1.25rem;">
+  <div style="background: var(--color-background-secondary); border-radius: var(--border-radius-lg); padding: 1.1rem;">
+    <p style="font-size: 13px; color: var(--color-text-secondary); margin: 0 0 0.6rem; font-weight: 500;">チーム数</p>
+    <div style="display: flex; gap: 6px; flex-wrap: wrap;" id="team-count-btns">
+      <button onclick="setTeamCount(4)" id="btn-t4" class="cnt-btn">4</button>
+      <button onclick="setTeamCount(5)" id="btn-t5" class="cnt-btn">5</button>
+      <button onclick="setTeamCount(6)" id="btn-t6" class="cnt-btn">6</button>
+      <button onclick="setTeamCount(7)" id="btn-t7" class="cnt-btn">7</button>
+      <button onclick="setTeamCount(8)" id="btn-t8" class="cnt-btn">8</button>
+    </div>
+  </div>
+  <div style="background: var(--color-background-secondary); border-radius: var(--border-radius-lg); padding: 1.1rem;">
+    <p style="font-size: 13px; color: var(--color-text-secondary); margin: 0 0 0.6rem; font-weight: 500;">コート数</p>
+    <div style="display: flex; gap: 6px;">
+      <button onclick="setCourtCount(2)" id="btn-c2" class="cnt-btn">2</button>
+      <button onclick="setCourtCount(3)" id="btn-c3" class="cnt-btn">3</button>
+    </div>
+  </div>
+</div>
+
+<div id="team-names-section" style="margin-bottom: 1.25rem; display: none;">
+  <p style="font-size: 13px; color: var(--color-text-secondary); margin: 0 0 0.6rem; font-weight: 500;">チーム設定</p>
+  <div id="team-inputs" style="display: flex; flex-direction: column; gap: 8px;"></div>
+</div>
+
+<button onclick="generate()" id="gen-btn" style="width: 100%; padding: 12px; border-radius: var(--border-radius-md); font-size: 15px; font-weight: 500; cursor: pointer; margin-bottom: 1.25rem; display: none;">
+  <i class="ti ti-shuffle" aria-hidden="true"></i> 総当たり組み合わせを抽選する
+</button>
+
+<div id="result-section" style="display: none;">
+  <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem;">
+    <p style="font-size: 13px; color: var(--color-text-secondary); font-weight: 500; margin: 0;" id="result-summary"></p>
+    <button onclick="generate()" style="font-size: 12px; padding: 4px 12px; border-radius: var(--border-radius-md); cursor: pointer;"><i class="ti ti-refresh" aria-hidden="true"></i> 再抽選</button>
+  </div>
+  <div id="courts-result" style="display: flex; flex-direction: column; gap: 16px;"></div>
+</div>
+
+</div>
+
+<style>
+.cnt-btn { padding: 7px 13px; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; background: var(--color-background-primary); border: 0.5px solid var(--color-border-secondary); color: var(--color-text-primary); }
+.cnt-btn:hover { background: var(--color-background-secondary); }
+.cnt-btn.active-purple { background: #534AB7; border-color: #534AB7; color: #fff; }
+.cnt-btn.active-teal { background: #0F6E56; border-color: #0F6E56; color: #fff; }
+.color-swatch { width: 26px; height: 26px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 500; }
+.color-swatch.selected { box-shadow: 0 0 0 2px #534AB7; }
+.team-row { display: flex; align-items: center; gap: 10px; background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: 8px; padding: 8px 12px; }
+.round-header { font-size: 12px; font-weight: 500; color: var(--color-text-secondary); padding: 4px 0 6px; border-bottom: 0.5px solid var(--color-border-tertiary); margin-bottom: 8px; }
+</style>
+
+<script>
+let teamCount = 0;
+let courtCount = 0;
+let teamColorSelections = {};
+
+const COLORS = [
+  { id: 'red',    label: '赤', swatch: '#E24B4A', bg: '#FCEBEB', border: '#E24B4A', text: '#791F1F', dot: '#E24B4A' },
+  { id: 'orange', label: '橙', swatch: '#EF9F27', bg: '#FAEEDA', border: '#BA7517', text: '#633806', dot: '#EF9F27' },
+  { id: 'yellow', label: '黄', swatch: '#F5D020', bg: '#FFFAE0', border: '#C9A800', text: '#7A6200', dot: '#F5D020' },
+  { id: 'pink',   label: '桃', swatch: '#D4537E', bg: '#FBEAF0', border: '#D4537E', text: '#72243E', dot: '#D4537E' },
+  { id: 'blue',   label: '青', swatch: '#378ADD', bg: '#E6F1FB', border: '#378ADD', text: '#0C447C', dot: '#378ADD' },
+  { id: 'cyan',   label: '水', swatch: '#1D9E75', bg: '#E1F5EE', border: '#1D9E75', text: '#085041', dot: '#1D9E75' },
+  { id: 'white',  label: '白', swatch: '#FFFFFF', bg: '#F8F8F8', border: '#B4B2A9', text: '#444441', dot: '#D3D1C7' },
+  { id: 'none',   label: '無', swatch: null,      bg: 'var(--color-background-secondary)', border: 'var(--color-border-secondary)', text: 'var(--color-text-primary)', dot: null },
+];
+
+const courtColors = [
+  { label: 'コートA', bg: '#E1F5EE', border: '#1D9E75', text: '#085041' },
+  { label: 'コートB', bg: '#EEEDFE', border: '#7F77DD', text: '#3C3489' },
+  { label: 'コートC', bg: '#FAEEDA', border: '#BA7517', text: '#633806' },
+];
+
+function setTeamCount(n) {
+  teamCount = n;
+  document.querySelectorAll('#team-count-btns .cnt-btn').forEach(b => b.classList.remove('active-purple'));
+  document.getElementById('btn-t' + n).classList.add('active-purple');
+  buildInputs();
+  checkReady();
+}
+
+function setCourtCount(n) {
+  courtCount = n;
+  document.querySelectorAll('#btn-c2,#btn-c3').forEach(b => b.classList.remove('active-teal'));
+  document.getElementById('btn-c' + n).classList.add('active-teal');
+  checkReady();
+}
+
+function buildInputs() {
+  const inp = document.getElementById('team-inputs');
+  inp.innerHTML = '';
+  for (let i = 1; i <= teamCount; i++) {
+    if (!teamColorSelections[i]) teamColorSelections[i] = 'none';
+    const row = document.createElement('div');
+    row.className = 'team-row';
+
+    const label = document.createElement('span');
+    label.style.cssText = 'font-size: 13px; color: var(--color-text-secondary); min-width: 48px; font-weight: 500;';
+    label.textContent = 'チーム' + i;
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.placeholder = 'チーム ' + i;
+    input.id = 't' + i;
+    input.maxLength = 16;
+    input.style.cssText = 'flex: 1; font-size: 14px; min-width: 0;';
+
+    const swatchRow = document.createElement('div');
+    swatchRow.style.cssText = 'display: flex; gap: 5px; align-items: center; flex-shrink: 0;';
+
+    COLORS.forEach(c => {
+      const sw = document.createElement('div');
+      sw.className = 'color-swatch' + (teamColorSelections[i] === c.id ? ' selected' : '');
+      sw.title = c.label;
+      sw.dataset.team = i;
+      sw.dataset.color = c.id;
+      sw.onclick = function() { selectColor(i, c.id); };
+      if (c.swatch) {
+        sw.style.background = c.swatch;
+        sw.style.border = c.id === 'white' ? '2px solid #B4B2A9' : '2px solid transparent';
+      } else {
+        sw.style.background = 'var(--color-background-secondary)';
+        sw.style.border = '2px solid var(--color-border-secondary)';
+        sw.style.color = 'var(--color-text-secondary)';
+        sw.textContent = '×';
+      }
+      if (teamColorSelections[i] === c.id) sw.style.boxShadow = '0 0 0 2px #534AB7';
+      swatchRow.appendChild(sw);
+    });
+
+    row.appendChild(label);
+    row.appendChild(input);
+    row.appendChild(swatchRow);
+    inp.appendChild(row);
+  }
+  document.getElementById('team-names-section').style.display = 'block';
+}
+
+function selectColor(teamIdx, colorId) {
+  teamColorSelections[teamIdx] = colorId;
+  document.querySelectorAll(`.color-swatch[data-team="${teamIdx}"]`).forEach(sw => {
+    sw.classList.remove('selected');
+    sw.style.boxShadow = '';
+    const cid = sw.dataset.color;
+    if (cid === 'white') sw.style.border = '2px solid #B4B2A9';
+    else if (cid === 'none') sw.style.border = '2px solid var(--color-border-secondary)';
+    else sw.style.border = '2px solid transparent';
+  });
+  const sel = document.querySelector(`.color-swatch[data-team="${teamIdx}"][data-color="${colorId}"]`);
+  if (sel) { sel.classList.add('selected'); sel.style.boxShadow = '0 0 0 2px #534AB7'; }
+}
+
+function checkReady() {
+  document.getElementById('gen-btn').style.display = (teamCount > 0 && courtCount > 0) ? 'block' : 'none';
+  document.getElementById('result-section').style.display = 'none';
+}
+
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function getRoundRobinMatches(teams) {
+  const n = teams.length;
+  const list = [...teams];
+  const hasBye = n % 2 === 1;
+  if (hasBye) list.push(null);
+  const rounds = list.length - 1;
+  const half = list.length / 2;
+  const allRounds = [];
+
+  for (let r = 0; r < rounds; r++) {
+    const roundMatches = [];
+    for (let i = 0; i < half; i++) {
+      const a = list[i];
+      const b = list[list.length - 1 - i];
+      if (a !== null && b !== null) roundMatches.push([a, b]);
+    }
+    allRounds.push(shuffle(roundMatches));
+    const last = list.pop();
+    list.splice(1, 0, last);
+  }
+  return allRounds;
+}
+
+function getColorDef(colorId) {
+  return COLORS.find(c => c.id === colorId) || COLORS[COLORS.length - 1];
+}
+
+function teamChip(team) {
+  const c = getColorDef(team.color);
+  const dot = c.dot
+    ? `<span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${c.dot};margin-right:6px;flex-shrink:0;border:1px solid ${c.border};"></span>`
+    : '';
+  return `<div style="flex:1;background:${c.bg};border:0.5px solid ${c.border};border-radius:8px;padding:7px 10px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:500;color:${c.text};">${dot}${team.name}</div>`;
+}
+
+function generate() {
+  const teams = [];
+  for (let i = 1; i <= teamCount; i++) {
+    const name = (document.getElementById('t' + i).value.trim()) || ('チーム ' + i);
+    teams.push({ name, color: teamColorSelections[i] || 'none' });
+  }
+
+  const shuffledTeams = shuffle(teams);
+  const allRounds = getRoundRobinMatches(shuffledTeams);
+  const totalMatches = allRounds.reduce((s, r) => s + r.length, 0);
+
+  document.getElementById('result-summary').textContent =
+    `全${totalMatches}試合・${allRounds.length}ラウンド`;
+
+  const courts = document.getElementById('courts-result');
+  courts.innerHTML = '';
+
+  const courtDivs = [];
+  const courtBodies = [];
+  const courtMatchCounts = [];
+
+  for (let ci = 0; ci < courtCount; ci++) {
+    const cc = courtColors[ci];
+    const wrapper = document.createElement('div');
+    wrapper.style.cssText = `background:var(--color-background-primary);border:0.5px solid ${cc.border};border-radius:12px;overflow:hidden;`;
+
+    const header = document.createElement('div');
+    header.style.cssText = `background:${cc.bg};padding:8px 14px;display:flex;align-items:center;gap:8px;border-bottom:0.5px solid ${cc.border};`;
+    header.innerHTML = `<i class="ti ti-building-stadium" aria-hidden="true" style="font-size:16px;color:${cc.text};"></i><span style="font-size:13px;font-weight:500;color:${cc.text};">${cc.label}</span><span id="court-count-${ci}" style="font-size:12px;color:${cc.text};margin-left:auto;"></span>`;
+    wrapper.appendChild(header);
+
+    const body = document.createElement('div');
+    body.style.cssText = 'padding:10px 14px;display:flex;flex-direction:column;gap:0;';
+    wrapper.appendChild(body);
+    courts.appendChild(wrapper);
+    courtDivs.push(wrapper);
+    courtBodies.push(body);
+    courtMatchCounts.push(0);
+  }
+
+  let globalMatchNum = 0;
+  allRounds.forEach((roundMatches, ri) => {
+    const matchesThisRound = roundMatches;
+    matchesThisRound.forEach((pair, mi) => {
+      const ci = globalMatchNum % courtCount;
+      const body = courtBodies[ci];
+      courtMatchCounts[ci]++;
+      const matchNum = courtMatchCounts[ci];
+
+      if (matchNum > 1) {
+        const div = document.createElement('div');
+        div.style.cssText = 'border-top: 0.5px solid var(--color-border-tertiary); margin: 6px 0;';
+        body.appendChild(div);
+      }
+
+      const roundLabel = document.createElement('div');
+      roundLabel.style.cssText = 'font-size: 11px; color: var(--color-text-secondary); margin-bottom: 4px; margin-top: ' + (matchNum > 1 ? '6px' : '0') + ';';
+      roundLabel.textContent = `第${ri + 1}ラウンド・第${matchNum}試合`;
+      body.appendChild(roundLabel);
+
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex;align-items:center;gap:8px;';
+      row.innerHTML = `${teamChip(pair[0])}<span style="font-size:14px;font-weight:500;color:var(--color-text-secondary);">vs</span>${teamChip(pair[1])}`;
+      body.appendChild(row);
+
+      globalMatchNum++;
+    });
+  });
+
+  for (let ci = 0; ci < courtCount; ci++) {
+    document.getElementById('court-count-' + ci).textContent = courtMatchCounts[ci] + '試合';
+  }
+
+  document.getElementById('result-section').style.display = 'block';
+}
+</script>
